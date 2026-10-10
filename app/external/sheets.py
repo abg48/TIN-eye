@@ -13,7 +13,7 @@ SCOREBOARD_SHEET = 'Discord bot scoreboard'
 SIGNUPS_SHEET = 'Discord bot signups'
 
 EVENT_LOG_HEADERS = ['Drop ID', 'Timestamp', 'User', 'Item', 'Team', 'Archive URL']
-SIGNUPS_HEADERS = ['Discord Username', 'In-Game Name']
+SIGNUPS_HEADERS = ['Discord Username', 'In-Game Name', 'Avg Daily Playtime']
 
 
 class DuplicateSignupError(Exception):
@@ -108,12 +108,12 @@ def user_has_signup(discord_username: str) -> bool:
     return signup_exists(sheet, discord_username)
 
 
-def log_signup(discord_username: str, in_game_name: str) -> None:
+def log_signup(discord_username: str, in_game_name: str, daily_playtime: str) -> None:
     sheet = get_sheet(SIGNUPS_SHEET)
     ensure_signups_headers(sheet)
     if signup_exists(sheet, discord_username):
         raise DuplicateSignupError("You are already signed up for this event.")
-    sheet.append_row([discord_username, in_game_name])
+    sheet.append_row([discord_username, in_game_name, daily_playtime])
 
 
 class EventItemCache:

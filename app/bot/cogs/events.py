@@ -163,11 +163,19 @@ class EventsCog(commands.Cog):
     @app_commands.command(name="signup", description="Sign up for the latest event")
     @app_commands.describe(
         in_game_name="Your RuneScape in-game name",
+        daily_playtime="Your average daily playtime",
+    )
+    @app_commands.choices(
+        daily_playtime=[
+            app_commands.Choice(name=label, value=label)
+            for label in ("< 1 hour", "1-3 hours", "3-5 hours", "> 5 hours")
+        ]
     )
     async def signup(
         self,
         interaction: discord.Interaction,
         in_game_name: str,
+        daily_playtime: str,
     ):
         in_game_name = in_game_name.strip()
         if not in_game_name:
@@ -188,6 +196,7 @@ class EventsCog(commands.Cog):
             log_signup(
                 discord_username=interaction.user.name,
                 in_game_name=in_game_name,
+                daily_playtime=daily_playtime,
             )
             await interaction.response.send_message(
                 "Signup submitted successfully.",
