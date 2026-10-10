@@ -163,25 +163,16 @@ class EventsCog(commands.Cog):
     @app_commands.command(name="signup", description="Sign up for the latest event")
     @app_commands.describe(
         in_game_name="Your RuneScape in-game name",
-        effort="Estimated effort for this event",
     )
     async def signup(
         self,
         interaction: discord.Interaction,
         in_game_name: str,
-        effort: str,
     ):
         in_game_name = in_game_name.strip()
-        effort = effort.strip()
         if not in_game_name:
             await interaction.response.send_message(
                 "In-game name is required.",
-                ephemeral=True,
-            )
-            return
-        if not effort:
-            await interaction.response.send_message(
-                "Effort is required.",
                 ephemeral=True,
             )
             return
@@ -197,7 +188,6 @@ class EventsCog(commands.Cog):
             log_signup(
                 discord_username=interaction.user.name,
                 in_game_name=in_game_name,
-                effort=effort,
             )
             await interaction.response.send_message(
                 "Signup submitted successfully.",
