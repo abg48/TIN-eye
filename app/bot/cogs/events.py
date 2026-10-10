@@ -11,6 +11,7 @@ from app.external.sheets import (
     log_signup,
     DuplicateSignupError,
     user_has_signup,
+    get_signup_names,
 )
 
 async def item_name_autocomplete(interaction: discord.Interaction, current: str):
@@ -80,6 +81,54 @@ class UndoDropView(discord.ui.View):
         else:
             await interaction.response.edit_message(view=self)
             await interaction.followup.send(f"Drop '{drop_id}' could not be undone (not found).", ephemeral=True)
+
+class RosterView(discord.ui.View):
+    PAGE_SIZE = 50
+
+    def __init__(self, names: list[str]):
+        super().__init__(timeout=300)
+        self.names = names
+        self.page = 0
+        self.message: discord.Message | None = None
+        self.page_count = max(1, -(-len(names) // self.PAGE_SIZE))
+        self._sync_buttons()
+
+    def _sync_buttons(self):
+        self.prev_button.disabled = self.page == 0
+        self.next_button.disabled = self.page >= self.page_count - 1
+
+    def render(self) -> str:
+        if not self.names:
+            return "No one has signed up yet."
+        start = self.page * self.PAGE_SIZE
+        chunk = self.names[start:start + self.PAGE_SIZE]
+        width = max(len("In-Game Name"), *(len(n) for n in chunk))
+        lines = [f"{'#':>3} | {'In-Game Name':<{width}}", f"{'-' * 3}-+-{'-' * width}"]
+        lines += [f"{i:>3} | {n:<{width}}" for i, n in enumerate(chunk, start + 1)]
+        body = "\n".join(lines)
+        return f"```\n{body}\n```Page {self.page + 1}/{self.page_count}"
+
+    async def _turn(self, interaction: discord.Interaction, delta: int):
+        self.page += delta
+        self._sync_buttons()
+        await interaction.response.edit_message(content=self.render(), view=self)
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    async def prev_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._turn(interaction, -1)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._turn(interaction, 1)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except discord.HTTPException:
+                pass
 
 class EventsCog(commands.Cog):
     def __init__(self, bot):
@@ -212,6 +261,21 @@ class EventsCog(commands.Cog):
                 f"Failed to submit signup: {e}",
                 ephemeral=True,
             )
+
+    @app_commands.command(name="event_roster", description="Show who is registered for the event")
+    async def event_roster(self, interaction: discord.Interaction):
+        try:
+            names = get_signup_names()
+        except Exception as e:
+            await interaction.response.send_message(
+                f"Failed to fetch roster: {e}",
+                ephemeral=True,
+            )
+            return
+
+        view = RosterView(names)
+        await interaction.response.send_message(view.render(), view=view)
+        view.message = await interaction.original_response()
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))

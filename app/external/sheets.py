@@ -116,6 +116,16 @@ def log_signup(discord_username: str, in_game_name: str, daily_playtime: str) ->
     sheet.append_row([discord_username, in_game_name, daily_playtime])
 
 
+def get_signup_names() -> list[str]:
+    sheet = get_sheet(SIGNUPS_SHEET)
+    ensure_signups_headers(sheet)
+    names = []
+    for row in sheet.get_all_values()[1:]:
+        if len(row) > 1 and row[1].strip():
+            names.append(row[1].strip())
+    return names
+
+
 class EventItemCache:
     def __init__(self):
         self.items: list[str] = []
