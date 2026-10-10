@@ -223,7 +223,7 @@ class EventsCog(commands.Cog):
     async def signup(
         self,
         interaction: discord.Interaction,
-        in_game_name: str,
+        in_game_name: app_commands.Range[str, 1, 15],
         daily_playtime: str,
     ):
         in_game_name = in_game_name.strip()
