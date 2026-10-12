@@ -21,6 +21,7 @@ jobs:
     env:
       DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
       PROOF_ARCHIVE_CHANNEL_ID: ${{ secrets.PROOF_ARCHIVE_CHANNEL_ID }}
+      DROP_LOG_CHANNEL_ID: ${{ secrets.DROP_LOG_CHANNEL_ID }}
       SYNC_API_BASE_URL: ${{ secrets.SYNC_API_BASE_URL }}
       GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID }}
       GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
@@ -65,6 +66,7 @@ jobs:
 
           required = {
               "DISCORD_TOKEN": os.environ.get("DISCORD_TOKEN"),
+              "DROP_LOG_CHANNEL_ID": os.environ.get("DROP_LOG_CHANNEL_ID"),
               "SYNC_API_BASE_URL": os.environ.get("SYNC_API_BASE_URL"),
               "ECS_EXECUTION_ROLE_ARN": os.environ.get("ECS_EXECUTION_ROLE_ARN"),
           }
@@ -75,6 +77,7 @@ jobs:
           env_entries = [
               {"name": "DISCORD_TOKEN", "value": os.environ.get("DISCORD_TOKEN", "")},
               {"name": "PROOF_ARCHIVE_CHANNEL_ID", "value": os.environ.get("PROOF_ARCHIVE_CHANNEL_ID", "")},
+              {"name": "DROP_LOG_CHANNEL_ID", "value": os.environ.get("DROP_LOG_CHANNEL_ID", "")},
               {"name": "SYNC_API_BASE_URL", "value": os.environ.get("SYNC_API_BASE_URL", "")},
               {"name": "GOOGLE_PROJECT_ID", "value": os.environ.get("GOOGLE_PROJECT_ID", "")},
               {"name": "GOOGLE_CLIENT_EMAIL", "value": os.environ.get("GOOGLE_CLIENT_EMAIL", "")},

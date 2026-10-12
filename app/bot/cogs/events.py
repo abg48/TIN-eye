@@ -130,6 +130,7 @@ class RosterView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
+
 class EventsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -161,7 +162,14 @@ class EventsCog(commands.Cog):
         
         try:
             archive_channel_id = int(os.environ["PROOF_ARCHIVE_CHANNEL_ID"])
+            drop_log_channel_id = int(os.environ["DROP_LOG_CHANNEL_ID"])
             archive_channel = self.bot.get_channel(archive_channel_id)
+            if archive_channel is None:
+                archive_channel = await self.bot.fetch_channel(archive_channel_id)
+            drop_log_channel = self.bot.get_channel(drop_log_channel_id)
+            if drop_log_channel is None:
+                drop_log_channel = await self.bot.fetch_channel(drop_log_channel_id)
+
             archive_message = await archive_channel.send(
                 f"Drop proof | {item_name} | {interaction.user.mention} | {timestamp}",
                 file=await proof.to_file()
@@ -173,6 +181,18 @@ class EventsCog(commands.Cog):
                 content=f"Drop proof | {item_name} | {interaction.user.mention} | {timestamp}\nDrop ID: {drop_id}",
                 view=UndoDropView()
             )
+
+            try:
+                await drop_log_channel.send(
+                    f"{interaction.user.mention} logged **{item_name}** for **{team}**!"
+                )
+            except Exception:
+                await interaction.followup.send(
+                    f"Logged **{item_name}** for {interaction.user.mention}. Drop ID: {drop_id}. "
+                    "The public drop log could not be updated; please notify admin+.",
+                    ephemeral=True,
+                )
+                return
 
             await interaction.followup.send(
                 f"Logged **{item_name}** for {interaction.user.mention}. Drop ID: {drop_id}",
