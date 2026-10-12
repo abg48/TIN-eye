@@ -42,21 +42,17 @@ def paginate_lines(lines: List[str], max_chars=2000) -> List[str]:
 
 class InactivePaginationView(discord.ui.View):
     def __init__(self, pages: List[str], author_id: int, title: str, timeout: int = 120,
-                 color: discord.Color = discord.Color.red(), footer_note: str = ""):
+                 color: discord.Color = discord.Color.red()):
         super().__init__(timeout=timeout)
         self.pages = pages
         self.author_id = author_id
         self.title = title
         self.color = color
-        self.footer_note = footer_note
         self.index = 0
 
     def _build_embed(self) -> discord.Embed:
         embed = discord.Embed(title=self.title, description=self.pages[self.index], color=self.color)
-        footer = f"Page {self.index + 1}/{len(self.pages)}"
-        if self.footer_note:
-            footer = f"{footer} | {self.footer_note}"
-        embed.set_footer(text=footer)
+        embed.set_footer(text=f"Page {self.index + 1}/{len(self.pages)}")
         return embed
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -185,11 +181,9 @@ class MembersCog(commands.Cog):
         ]
         pages = paginate_lines(lines)
         title = f"Rank-up Eligibility ({len(eligible)} members)"
-        footer_note = "Earliest recorded public snapshot; older members may be undercounted"
 
         if len(pages) == 1:
             embed = discord.Embed(title=title, description=pages[0], color=discord.Color.gold())
-            embed.set_footer(text=footer_note)
             await interaction.followup.send(embed=embed)
             return
 
@@ -198,7 +192,6 @@ class MembersCog(commands.Cog):
             author_id=interaction.user.id,
             title=title,
             color=discord.Color.gold(),
-            footer_note=footer_note,
         )
         view.message = await interaction.followup.send(embed=view._build_embed(), view=view, wait=True)
 
