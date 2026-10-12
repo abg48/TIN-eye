@@ -169,7 +169,7 @@ class MembersCog(commands.Cog):
             if earned_rank_index > current_rank_index:
                 eligible.append((member, gained_xp, earned_rank_index, current_rank_index))
 
-        eligible.sort(key=lambda result: (-result[1], result[0]["rsn"].casefold()))
+        eligible.sort(key=lambda result: result[0]["rsn"].casefold())
         if not eligible:
             await interaction.followup.send("No members are currently eligible for a rank-up.")
             return
