@@ -5,6 +5,7 @@ from typing import List
 from app.bot.db_queries import(
     get_member_total_xp,
     get_all_member_xp,
+    get_member_xp_gains,
     get_inactive_members,
     get_members_by_rank,
     get_member_xp_history,
@@ -12,6 +13,15 @@ from app.bot.db_queries import(
     get_private_members,
     rename_member
 )
+
+RANK_THRESHOLDS = [
+    ("Recruit", 0),
+    ("Corporal", 20_000_000),
+    ("Sergeant", 75_000_000),
+    ("Lieutenant", 250_000_000),
+    ("Captain", 700_000_000),
+    ("General", 1_500_000_000),
+]
 
 def paginate_lines(lines: List[str], max_chars=2000) -> List[str]:
     pages = []
@@ -31,16 +41,22 @@ def paginate_lines(lines: List[str], max_chars=2000) -> List[str]:
     return pages
 
 class InactivePaginationView(discord.ui.View):
-    def __init__(self, pages: List[str], author_id: int, title: str, timeout: int = 120):
+    def __init__(self, pages: List[str], author_id: int, title: str, timeout: int = 120,
+                 color: discord.Color = discord.Color.red(), footer_note: str = ""):
         super().__init__(timeout=timeout)
         self.pages = pages
         self.author_id = author_id
         self.title = title
+        self.color = color
+        self.footer_note = footer_note
         self.index = 0
 
     def _build_embed(self) -> discord.Embed:
-        embed = discord.Embed(title=self.title, description=self.pages[self.index], color=discord.Color.red())
-        embed.set_footer(text=f"Page {self.index + 1}/{len(self.pages)}")
+        embed = discord.Embed(title=self.title, description=self.pages[self.index], color=self.color)
+        footer = f"Page {self.index + 1}/{len(self.pages)}"
+        if self.footer_note:
+            footer = f"{footer} | {self.footer_note}"
+        embed.set_footer(text=footer)
         return embed
     
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
@@ -122,6 +138,69 @@ class MembersCog(commands.Cog):
         embed.description = leaderboard_text
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="rankups", description="Show members eligible for a rank-up based on clan XP")
+    async def rankups(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        try:
+            members = get_member_xp_gains()
+        except Exception:
+            await interaction.followup.send(
+                "Could not retrieve member XP data. Please try again later.",
+                ephemeral=True,
+            )
+            return
+
+        rank_indices = {rank.casefold(): index for index, (rank, _) in enumerate(RANK_THRESHOLDS)}
+        eligible = []
+        for member in members:
+            current_rank = member.get("rank")
+            if not isinstance(current_rank, str):
+                continue
+
+            current_rank_index = rank_indices.get(current_rank.casefold())
+            if current_rank_index is None:
+                continue
+
+            gained_xp = member["current_xp"] - member["baseline_xp"]
+            if gained_xp < 0:
+                continue
+
+            earned_rank_index = max(
+                index for index, (_, threshold) in enumerate(RANK_THRESHOLDS)
+                if gained_xp >= threshold
+            )
+            if earned_rank_index > current_rank_index:
+                eligible.append((member, gained_xp, earned_rank_index, current_rank_index))
+
+        eligible.sort(key=lambda result: (-result[1], result[0]["rsn"].casefold()))
+        if not eligible:
+            await interaction.followup.send("No members are currently eligible for a rank-up.")
+            return
+
+        lines = [
+            f"- **{member['rsn']}**: {RANK_THRESHOLDS[current_rank_index][0]} "
+            f"-> {RANK_THRESHOLDS[earned_rank_index][0]} ({gained_xp:,} tracked XP)"
+            for member, gained_xp, earned_rank_index, current_rank_index in eligible
+        ]
+        pages = paginate_lines(lines)
+        title = f"Rank-up Eligibility ({len(eligible)} members)"
+        footer_note = "Earliest recorded public snapshot; older members may be undercounted"
+
+        if len(pages) == 1:
+            embed = discord.Embed(title=title, description=pages[0], color=discord.Color.gold())
+            embed.set_footer(text=footer_note)
+            await interaction.followup.send(embed=embed)
+            return
+
+        view = InactivePaginationView(
+            pages=pages,
+            author_id=interaction.user.id,
+            title=title,
+            color=discord.Color.gold(),
+            footer_note=footer_note,
+        )
+        view.message = await interaction.followup.send(embed=view._build_embed(), view=view, wait=True)
 
     @app_commands.command(name="inactive", description="Show inactive members by rank and days")
     async def inactive(self, interaction: discord.Interaction, rank: str, days: int):

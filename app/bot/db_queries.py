@@ -25,6 +25,10 @@ def get_all_member_xp():
     return _request_json("/members") or []
 
 
+def get_member_xp_gains():
+    return _request_json("/member-xp-gains") or []
+
+
 def get_inactive_members():
     return _request_json("/inactive-members") or []
 
