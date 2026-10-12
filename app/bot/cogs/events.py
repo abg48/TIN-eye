@@ -3,6 +3,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from app.external.sheets import (
     log_item,
     undo_item,
@@ -159,8 +160,14 @@ class EventsCog(commands.Cog):
 
         user = interaction.user.display_name
         timestamp = datetime.utcnow().isoformat()
+        drop_id = None
         
         try:
+            team_number = int(team.split()[1])
+            score_before = Decimal(
+                str(get_scoreboard_scores()[team_number]).replace(",", "").strip() or "0"
+            )
+
             archive_channel_id = int(os.environ["PROOF_ARCHIVE_CHANNEL_ID"])
             drop_log_channel_id = int(os.environ["DROP_LOG_CHANNEL_ID"])
             archive_channel = self.bot.get_channel(archive_channel_id)
@@ -176,6 +183,10 @@ class EventsCog(commands.Cog):
             )
             
             drop_id = log_item(item_name, user, timestamp, team, archive_message.jump_url)
+            score_after = Decimal(
+                str(get_scoreboard_scores()[team_number]).replace(",", "").strip() or "0"
+            )
+            points_earned = score_after - score_before
 
             await archive_message.edit(
                 content=f"Drop proof | {item_name} | {interaction.user.mention} | {timestamp}\nDrop ID: {drop_id}",
@@ -184,7 +195,8 @@ class EventsCog(commands.Cog):
 
             try:
                 await drop_log_channel.send(
-                    f"{interaction.user.mention} logged **{item_name}** for **{team}**!"
+                    f"{interaction.user.mention} logged **{item_name}** drop for **{team}**, "
+                    f"earning them **{format(points_earned.normalize(), 'f')} points**!"
                 )
             except Exception:
                 await interaction.followup.send(
@@ -199,8 +211,18 @@ class EventsCog(commands.Cog):
                 view=UndoDropView(),
                 ephemeral=True
             )
+        except InvalidOperation:
+            if drop_id is None:
+                message = "Could not read the team score, so the drop was not logged. Please notify admin+."
+            else:
+                message = f"Drop {drop_id} was logged, but its score change could not be calculated. Please notify admin+."
+            await interaction.followup.send(message, ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"Failed to log event, please try again or ping admin+", ephemeral=True)
+            if drop_id is None:
+                message = "Failed to log event, please try again or ping admin+"
+            else:
+                message = f"Drop {drop_id} was logged, but a follow-up step failed. Please notify admin+."
+            await interaction.followup.send(message, ephemeral=True)
     
     @app_commands.command(name="eventdbsync", description="Sync the event item database with the spreadsheet")
     async def eventdbsync(self, interaction: discord.Interaction):

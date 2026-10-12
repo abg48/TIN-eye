@@ -71,15 +71,9 @@ def get_scoreboard_scores() -> dict[int, str]:
     """
     sheet = get_sheet(SCOREBOARD_SHEET)
     scores = {}
-
-    try:
-        cells = sheet.range('B1:B5')
-        for i, cell in enumerate(cells, start=1):
-            scores[i] = cell.value if cell.value else "0"
-    except Exception:
-        for i in range(1, 6):
-            scores[i] = "0"
-
+    cells = sheet.range('B1:B5')
+    for i, cell in enumerate(cells, start=1):
+        scores[i] = cell.value if cell.value else "0"
     return scores
 
 
